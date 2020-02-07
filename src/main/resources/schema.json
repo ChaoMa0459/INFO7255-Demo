@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Plan",
+  "description": "Medical plan",
+  "type": "object",
+  "properties": {
+    "_org": {
+      "type": "string",
+      "format": "hostname"
+    },
+    "objectId": {
+      "type": "string"
+    },
+    "objectType": {
+      "type": "string"
+    },
+    "planType": {
+      "type": "string"
+    },
+    "creationDate": {
+      "type": "string",
+      "pattern": "(\\d+)-(\\d+)-(\\d{4})"
+    },
+    "planCostShares": {
+      "type": "object",
+      "properties": {
+        "deductible": {
+          "type": "number"
+        },
+        "_org": {
+          "type": "string",
+          "format": "hostname"
+        },
+        "copay": {
+          "type": "number"
+        },
+        "objectId": {
+          "type": "string"
+        },
+        "objectType": {
+          "type": "string"
+        }
+      }
+    },
+    "linkedPlanServices": {
+      "type": "array",
+      "properties": {
+        "linkedService": {
+          "type": "object",
+          "properties": {
+            "_org": {
+              "type": "string",
+              "format": "hostname"
+            },
+            "objectId": {
+              "type": "string"
+            },
+            "objectType": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        "planserviceCostShares": {
+          "type": "object",
+          "properties": {
+            "deductible": {
+              "type": "number"
+            },
+            "_org": {
+              "type": "string",
+              "format": "hostname"
+            },
+            "copay": {
+              "type": "number"
+            },
+            "objectId": {
+              "type": "string"
+            },
+            "objectType": {
+              "type": "string"
+            }
+          }
+        },
+        "_org": {
+          "type": "string",
+          "format": "hostname"
+        },
+        "objectId": {
+          "type": "string"
+        },
+        "objectType": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
