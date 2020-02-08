@@ -1,12 +1,183 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Plan",
-  "description": "Medical plan",
+  "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
+    "planCostShares": {
+      "type": "object",
+      "properties": {
+        "deductible": {
+          "type": "integer"
+        },
+        "_org": {
+          "type": "string"
+        },
+        "copay": {
+          "type": "integer"
+        },
+        "objectId": {
+          "type": "string"
+        },
+        "objectType": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "deductible",
+        "_org",
+        "copay",
+        "objectId",
+        "objectType"
+      ]
+    },
+    "linkedPlanServices": {
+      "type": "array",
+      "items": [
+        {
+          "type": "object",
+          "properties": {
+            "linkedService": {
+              "type": "object",
+              "properties": {
+                "_org": {
+                  "type": "string"
+                },
+                "objectId": {
+                  "type": "string"
+                },
+                "objectType": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "_org",
+                "objectId",
+                "objectType",
+                "name"
+              ]
+            },
+            "planserviceCostShares": {
+              "type": "object",
+              "properties": {
+                "deductible": {
+                  "type": "integer"
+                },
+                "_org": {
+                  "type": "string"
+                },
+                "copay": {
+                  "type": "integer"
+                },
+                "objectId": {
+                  "type": "string"
+                },
+                "objectType": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "deductible",
+                "_org",
+                "copay",
+                "objectId",
+                "objectType"
+              ]
+            },
+            "_org": {
+              "type": "string"
+            },
+            "objectId": {
+              "type": "string"
+            },
+            "objectType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "linkedService",
+            "planserviceCostShares",
+            "_org",
+            "objectId",
+            "objectType"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "linkedService": {
+              "type": "object",
+              "properties": {
+                "_org": {
+                  "type": "string"
+                },
+                "objectId": {
+                  "type": "string"
+                },
+                "objectType": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "_org",
+                "objectId",
+                "objectType",
+                "name"
+              ]
+            },
+            "planserviceCostShares": {
+              "type": "object",
+              "properties": {
+                "deductible": {
+                  "type": "integer"
+                },
+                "_org": {
+                  "type": "string"
+                },
+                "copay": {
+                  "type": "integer"
+                },
+                "objectId": {
+                  "type": "string"
+                },
+                "objectType": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "deductible",
+                "_org",
+                "copay",
+                "objectId",
+                "objectType"
+              ]
+            },
+            "_org": {
+              "type": "string"
+            },
+            "objectId": {
+              "type": "string"
+            },
+            "objectType": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "linkedService",
+            "planserviceCostShares",
+            "_org",
+            "objectId",
+            "objectType"
+          ]
+        }
+      ]
+    },
     "_org": {
-      "type": "string",
-      "format": "hostname"
+      "type": "string"
     },
     "objectId": {
       "type": "string"
@@ -18,83 +189,16 @@
       "type": "string"
     },
     "creationDate": {
-      "type": "string",
-      "pattern": "(\\d+)-(\\d+)-(\\d{4})"
-    },
-    "planCostShares": {
-      "type": "object",
-      "properties": {
-        "deductible": {
-          "type": "number"
-        },
-        "_org": {
-          "type": "string",
-          "format": "hostname"
-        },
-        "copay": {
-          "type": "number"
-        },
-        "objectId": {
-          "type": "string"
-        },
-        "objectType": {
-          "type": "string"
-        }
-      }
-    },
-    "linkedPlanServices": {
-      "type": "array",
-      "properties": {
-        "linkedService": {
-          "type": "object",
-          "properties": {
-            "_org": {
-              "type": "string",
-              "format": "hostname"
-            },
-            "objectId": {
-              "type": "string"
-            },
-            "objectType": {
-              "type": "string"
-            },
-            "name": {
-              "type": "string"
-            }
-          }
-        },
-        "planserviceCostShares": {
-          "type": "object",
-          "properties": {
-            "deductible": {
-              "type": "number"
-            },
-            "_org": {
-              "type": "string",
-              "format": "hostname"
-            },
-            "copay": {
-              "type": "number"
-            },
-            "objectId": {
-              "type": "string"
-            },
-            "objectType": {
-              "type": "string"
-            }
-          }
-        },
-        "_org": {
-          "type": "string",
-          "format": "hostname"
-        },
-        "objectId": {
-          "type": "string"
-        },
-        "objectType": {
-          "type": "string"
-        }
-      }
+      "type": "string"
     }
-  }
+  },
+  "required": [
+    "planCostShares",
+    "linkedPlanServices",
+    "_org",
+    "objectId",
+    "objectType",
+    "planType",
+    "creationDate"
+  ]
 }

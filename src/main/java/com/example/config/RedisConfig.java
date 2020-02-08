@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration;
 
 import com.example.beans.JedisBean;
 import com.example.beans.MyJsonValidator;
-import com.example.beans.NameConverterBean;
 
 @Configuration
 public class RedisConfig {

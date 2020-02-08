@@ -46,11 +46,11 @@ public class HomeController {
 	
 	@RequestMapping("/")
 	public String home() {
-		return "Welcome!";
+		return "Welcome to my INFO7255 demo!";
 	}
 
 	// to read json instance from redis
-	@GetMapping("/read/{id}")
+	@GetMapping("/getplan/{id}")
 	public ResponseEntity<String> read(@PathVariable(name="id", required=true) String id) {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
@@ -64,7 +64,7 @@ public class HomeController {
 	
 	
 	// to insert new json instance into redis
-	@PostMapping("/insert")
+	@PostMapping("/addplan")
 	public ResponseEntity<String> insert(@RequestBody(required=true) String body) {
 		
 		Schema schema = validator.getSchema();
@@ -85,7 +85,7 @@ public class HomeController {
 	
 	
 	// to delete json instance with key id from redis
-	@DeleteMapping("/delete/{id}")
+	@DeleteMapping("/deleteplan/{id}")
 	public ResponseEntity<String> delete(@PathVariable(name="id", required=true) String id) {
 		
 		if(jedisBean.delete(id))
@@ -96,7 +96,7 @@ public class HomeController {
 	
 	
 	// to update Json instance with key id in Redis
-	@PutMapping("/update/{id}")
+	@PutMapping("/updateplan/{id}")
 	public ResponseEntity<String> update(@PathVariable(name="id", required=true) String id, @RequestBody(required=true) String body) {
 		
 		//if id does not exist
