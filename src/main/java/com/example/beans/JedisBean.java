@@ -4,10 +4,16 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
+// import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.CacheControl;
+import org.springframework.util.DigestUtils;
 
 import io.lettuce.core.RedisException;
 import redis.clients.jedis.Jedis;
@@ -18,31 +24,40 @@ public class JedisBean {
 
 	private static final String redisHost = "localhost";
 	private static final Integer redisPort = 6379;
+	//the jedis connection pool..
 	private static JedisPool pool = null;
+	
+	private final Logger LOG = LoggerFactory.getLogger(getClass());
 	
 	public JedisBean() {
 		pool = new JedisPool(redisHost, redisPort);
 	}
 	
-	public UUID insert(JSONObject jsonObject) {
-		UUID idOne = UUID.randomUUID();
-		if(insertUtil(jsonObject, idOne.toString()))
-			return idOne;
-		else
+	public String add(JSONObject jsonObject) {
+		try {
+			String idOne = (String)jsonObject.get("objectId");
+			if(addHelper(jsonObject, idOne.toString()))
+				return idOne;
+			else
+				return null;
+		} catch(Exception e) {
+			e.printStackTrace();
 			return null;
+		}
 	}
 	
-	private boolean insertUtil(JSONObject jsonObject, String uuid) {
+	private boolean addHelper(JSONObject jsonObject, String objectId) {
 		
 		try {
+			//get a jedis connection jedis connection pool
 			Jedis jedis = pool.getResource();
 			
 			for(Object key : jsonObject.keySet()) {
-				String attributeKey = uuid + "_" + String.valueOf(key);
+				String attributeKey = objectId + "_" + String.valueOf(key);
 				Object attributeVal = jsonObject.get(String.valueOf(key));
 				
 				if(attributeVal instanceof JSONObject) {
-					Map<String,String> map = handleObjectAsMap( (JSONObject) attributeVal);
+					Map<String,String> map = handleObjectAsMap((JSONObject) attributeVal);
 					jedis.hmset(attributeKey, map);
 				} else if (attributeVal instanceof JSONArray) {
 					Set<String> set  = handleObjectAsArray((JSONArray) attributeVal);
@@ -52,7 +67,7 @@ public class JedisBean {
 					jedis.set(attributeKey, String.valueOf(attributeVal));
 				}
 			}
-			jedis.sadd("MyApplicationKeys", uuid);
+			jedis.sadd("MyApplicationKeys", objectId);
 			jedis.close();
 		}
 		catch(JedisException e) {
@@ -80,15 +95,17 @@ public class JedisBean {
 		return set;
 	}
 	
-	public boolean delete(String uuid) {
+	public boolean delete(String objectId, Map<String, String> eTagMap) {
 		try {
 			Jedis jedis = pool.getResource();
-			Set<String> keys = jedis.keys(uuid+"*");
+			Set<String> keys = jedis.keys(objectId + "*");
 			for(String key : keys) {
 				jedis.del(key);
 			}
-			jedis.srem("MyApplicationKeys", uuid);
+			jedis.srem("MyApplicationKeys", objectId);
 			jedis.close();
+			// delete eTag
+			eTagMap.remove(objectId);
 			return true;
 		} catch(JedisException e) {
 			e.printStackTrace();
@@ -96,26 +113,55 @@ public class JedisBean {
 		}
 	}
 	
-	public String read(String uuid) {
-		
+	@Cacheable(value = "plans", key = "#objectId", unless="#result.length()<64")
+	public String getFromCache(String objectId, Map<String, String> eTagMap) {		
 			
-			System.out.println("Calling readutil");
-			JSONObject jsonObject = readUtil(uuid);
-			if(jsonObject != null)
-				return jsonObject.toString();
-			else
-				return null;
+		System.out.printf("Getting object {} from database.\n", objectId);
+		// LOG.info("Getting object {} from database.", objectId);
+
+	    // CacheControl cacheControl = CacheControl.maxAge(60, TimeUnit.SECONDS);
+		JSONObject jsonObject = getHelper(objectId);
+		if(jsonObject != null) {
+			String res = jsonObject.toString();			
+			// update eTag of this objectId
+			String eTag = DigestUtils.md5DigestAsHex(res.getBytes());
+			eTagMap.put(objectId, eTag);
+			// add eTag in response
+			jsonObject.put("eTag", eTag);
+			return jsonObject.toString();
+		} else {
+			return null;
+		}
 	}
 	
-	private JSONObject readUtil(String uuid) {
+	public String getFromDB(String objectId, Map<String, String> eTagMap) {		
+			
+		System.out.printf("Getting object {} from database.\n", objectId);
+		// LOG.info("Getting object {} from database.", objectId);
+		
+		JSONObject jsonObject = getHelper(objectId);
+		if(jsonObject != null) {
+			String res = jsonObject.toString();			
+			// update eTag of this objectId
+			String eTag = DigestUtils.md5DigestAsHex(res.getBytes());
+			eTagMap.put(objectId, eTag);
+			// add eTag in response
+			jsonObject.put("eTag", eTag);
+			return jsonObject.toString();
+		} else {
+			return null;
+		}
+	}
+	
+	private JSONObject getHelper(String objectId) {
 		try {
 			Jedis jedis = pool.getResource();
 			JSONObject o = new JSONObject();
-			System.out.println("Reading keys from pattern");
-			Set<String> keys = jedis.keys(uuid+"*");
-			for(String k : keys) {
-				System.out.println(k);
-			}
+			// System.out.println("Reading keys from pattern");
+			Set<String> keys = jedis.keys(objectId + "*");
+//			for(String k : keys) {
+//				System.out.println(k);
+//			}
 			for(String key : keys) {
 				if(jedis.type(key).equalsIgnoreCase("set")) {
 					JSONArray ja = new JSONArray();
@@ -123,16 +169,16 @@ public class JedisBean {
 					for(String member : set) {
 						ja.put(new JSONObject(member));
 					}
-					o.put(key.substring(uuid.length()+1), ja);
+					o.put(key.substring(objectId.length() + 1), ja);
 				} else if (jedis.type(key).equalsIgnoreCase("hash")) {
 					Map<String, String> map = jedis.hgetAll(key);
 					JSONObject n = new JSONObject();
 					for(String k : map.keySet()) {
 						n.put(k, map.get(k));
 					}
-					o.put(key.substring(uuid.length()+1), n);
+					o.put(key.substring(objectId.length() + 1), n);
 				} else {
-					o.put(key.substring(uuid.length()+1), jedis.get(key));
+					o.put(key.substring(objectId.length() + 1), jedis.get(key));
 				}
 			}
 			jedis.close();
@@ -143,11 +189,11 @@ public class JedisBean {
 		}
 	}
 	
-	public boolean doesKeyExist(String uuid) {
+	public boolean doesKeyExist(String objectId) {
 		
 		try {
 			Jedis jedis = pool.getResource();
-			if(jedis.sismember("MyApplicationKeys", uuid)) {
+			if(jedis.sismember("MyApplicationKeys", objectId)) {
 				jedis.close();
 				return true;
 			} else {
@@ -160,10 +206,10 @@ public class JedisBean {
 		}
 	}
 	
-	public boolean update(JSONObject jsonObject, String uuid) {
+	public boolean update(JSONObject jsonObject, String objectId, Map<String, String> eTagMap) {
 		try {
 			Jedis jedis = pool.getResource();
-			if( delete(uuid) && insertUtil(jsonObject, uuid)) {
+			if( delete(objectId, eTagMap) && addHelper(jsonObject, objectId)) {
 				jedis.close();
 				return true;
 			} else {

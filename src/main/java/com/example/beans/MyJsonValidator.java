@@ -10,8 +10,6 @@ import org.everit.json.schema.ValidationException;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONObject;
 import org.json.JSONTokener;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 public class MyJsonValidator {
 	
@@ -25,7 +23,6 @@ public class MyJsonValidator {
 		try {
 			inputStream = new FileInputStream(file);
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			inputStream = null;
 		}
