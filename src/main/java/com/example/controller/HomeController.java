@@ -64,14 +64,20 @@ public class HomeController {
 		String jsonString = null;
 		if (eTag != null && newETag != null && newETag != "" && newETag.equals(eTag)) {
 			System.out.printf("Getting object {} from cache.\n", objectId);
-			jsonString = jedisBean.getFromCache(objectId, eTagMap);
+			jsonString = jedisBean.getFromCache(objectId);
 		} else {
-			jsonString = jedisBean.getFromDB(objectId, eTagMap);
+			jsonString = jedisBean.getFromDB(objectId);
 		}
-		if (jsonString != null)
+		if (jsonString != null) {
+			eTag = DigestUtils.md5DigestAsHex(jsonString.getBytes());
+			// update eTag of this objectId
+			eTagMap.put(objectId, eTag);
+			// add eTag in response
+			headers.add("eTag", eTag);
 			return new ResponseEntity<String>(jsonString, headers, HttpStatus.OK);
-		else
+		} else {
 			return new ResponseEntity<String>("Read unsuccessfull", headers, HttpStatus.BAD_REQUEST);
+		}
 	}
 	
 	

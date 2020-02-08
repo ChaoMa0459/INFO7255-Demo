@@ -114,7 +114,7 @@ public class JedisBean {
 	}
 	
 	@Cacheable(value = "plans", key = "#objectId", unless="#result.length()<64")
-	public String getFromCache(String objectId, Map<String, String> eTagMap) {		
+	public String getFromCache(String objectId) {		
 			
 		System.out.printf("Getting object {} from database.\n", objectId);
 		// LOG.info("Getting object {} from database.", objectId);
@@ -122,31 +122,19 @@ public class JedisBean {
 	    // CacheControl cacheControl = CacheControl.maxAge(60, TimeUnit.SECONDS);
 		JSONObject jsonObject = getHelper(objectId);
 		if(jsonObject != null) {
-			String res = jsonObject.toString();			
-			// update eTag of this objectId
-			String eTag = DigestUtils.md5DigestAsHex(res.getBytes());
-			eTagMap.put(objectId, eTag);
-			// add eTag in response
-			jsonObject.put("eTag", eTag);
 			return jsonObject.toString();
 		} else {
 			return null;
 		}
 	}
 	
-	public String getFromDB(String objectId, Map<String, String> eTagMap) {		
+	public String getFromDB(String objectId) {		
 			
 		System.out.printf("Getting object {} from database.\n", objectId);
 		// LOG.info("Getting object {} from database.", objectId);
 		
 		JSONObject jsonObject = getHelper(objectId);
 		if(jsonObject != null) {
-			String res = jsonObject.toString();			
-			// update eTag of this objectId
-			String eTag = DigestUtils.md5DigestAsHex(res.getBytes());
-			eTagMap.put(objectId, eTag);
-			// add eTag in response
-			jsonObject.put("eTag", eTag);
 			return jsonObject.toString();
 		} else {
 			return null;
