@@ -36,7 +36,7 @@ public class JedisBean {
 	public String add(JSONObject jsonObject) {
 		try {
 			String idOne = (String)jsonObject.get("objectId");
-			if(addHelper(jsonObject, idOne.toString()))
+			if(!doesKeyExist(idOne) && addHelper(jsonObject, idOne.toString()))
 				return idOne;
 			else
 				return null;
@@ -95,7 +95,7 @@ public class JedisBean {
 		return set;
 	}
 	
-	public boolean delete(String objectId, Map<String, String> eTagMap) {
+	public boolean delete(String objectId) {
 		try {
 			Jedis jedis = pool.getResource();
 			Set<String> keys = jedis.keys(objectId + "*");
@@ -104,8 +104,6 @@ public class JedisBean {
 			}
 			jedis.srem("MyApplicationKeys", objectId);
 			jedis.close();
-			// delete eTag
-			eTagMap.remove(objectId);
 			return true;
 		} catch(JedisException e) {
 			e.printStackTrace();
@@ -113,25 +111,10 @@ public class JedisBean {
 		}
 	}
 	
-	@Cacheable(value = "plans", key = "#objectId", unless="#result.length()<64")
-	public String getFromCache(String objectId) {		
-			
-		System.out.printf("Getting object {} from database.\n", objectId);
-		// LOG.info("Getting object {} from database.", objectId);
-
-	    // CacheControl cacheControl = CacheControl.maxAge(60, TimeUnit.SECONDS);
-		JSONObject jsonObject = getHelper(objectId);
-		if(jsonObject != null) {
-			return jsonObject.toString();
-		} else {
-			return null;
-		}
-	}
-	
 	public String getFromDB(String objectId) {		
 			
-		System.out.printf("Getting object {} from database.\n", objectId);
-		// LOG.info("Getting object {} from database.", objectId);
+		// System.out.printf("Getting object {} from database.\n", objectId);
+		LOG.info("Getting object {} from database.", objectId);
 		
 		JSONObject jsonObject = getHelper(objectId);
 		if(jsonObject != null) {
@@ -194,10 +177,10 @@ public class JedisBean {
 		}
 	}
 	
-	public boolean update(JSONObject jsonObject, String objectId, Map<String, String> eTagMap) {
+	public boolean update(JSONObject jsonObject, String objectId) {
 		try {
 			Jedis jedis = pool.getResource();
-			if( delete(objectId, eTagMap) && addHelper(jsonObject, objectId)) {
+			if( delete(objectId) && addHelper(jsonObject, objectId)) {
 				jedis.close();
 				return true;
 			} else {

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.filter.ShallowEtagHeaderFilter;
 
 import com.example.beans.JedisBean;
 import com.example.beans.MyJsonValidator;
@@ -41,8 +42,10 @@ public class HomeController {
 	@Autowired
 	private JedisBean jedisBean;
 	private final Logger LOG = LoggerFactory.getLogger(getClass());
+	
+	private ShallowEtagHeaderFilter eTagFilter = new ShallowEtagHeaderFilter();
 	// the map of eTags, key: objectId, value: eTag
-	private Map<String, String> eTagMap = new HashMap<>();
+	// private Map<String, String> eTagMap = new HashMap<>();
 
 	
 	@RequestMapping("/")
@@ -52,28 +55,13 @@ public class HomeController {
 
 	// to read json instance from redis or cache
 	@GetMapping("/getplan/{objectId}")
-	public ResponseEntity<String> getplan(@PathVariable(name="objectId", required=true) String objectId, @RequestHeader("eTag") String newETag) {		
+	public ResponseEntity<String> getplan(@PathVariable(name="objectId", required=true) String objectId) {		
 		LOG.info("Getting object with ID {}.", objectId);
 		HttpHeaders headers = new HttpHeaders();
 		headers.setContentType(MediaType.APPLICATION_JSON);
 		
-		String eTag = eTagMap.get(objectId);
-		System.out.println("eTag: " + eTag);
-		System.out.println("newETag: " + newETag);
-		
-		String jsonString = null;
-		if (eTag != null && newETag != null && newETag != "" && newETag.equals(eTag)) {
-			System.out.printf("Getting object {} from cache.\n", objectId);
-			jsonString = jedisBean.getFromCache(objectId);
-		} else {
-			jsonString = jedisBean.getFromDB(objectId);
-		}
+		String jsonString = jedisBean.getFromDB(objectId);
 		if (jsonString != null) {
-			eTag = DigestUtils.md5DigestAsHex(jsonString.getBytes());
-			// update eTag of this objectId
-			eTagMap.put(objectId, eTag);
-			// add eTag in response
-			headers.add("eTag", eTag);
 			return new ResponseEntity<String>(jsonString, headers, HttpStatus.OK);
 		} else {
 			return new ResponseEntity<String>("Read unsuccessfull", headers, HttpStatus.BAD_REQUEST);
@@ -92,9 +80,13 @@ public class HomeController {
 		
 		JSONObject jsonObject = validator.getJsonObjectFromString(body);
 		
-		if (validator.validate(jsonObject)) {			
+		if (validator.validate(jsonObject)) {
 			String objectId = jedisBean.add(jsonObject);
-			return new ResponseEntity<String>("objectId: " + objectId + " is inserted successfully.", HttpStatus.OK);
+			if (objectId == null) {
+				return new ResponseEntity<String>("objectId already exists.", HttpStatus.BAD_REQUEST);				
+			} else {
+				return new ResponseEntity<String>("objectId: " + objectId + " is inserted successfully.", HttpStatus.OK);
+			}
 		} else {
 			return new ResponseEntity<String>("Invalid JSON input against schema.", HttpStatus.BAD_REQUEST);
 		}
@@ -107,7 +99,7 @@ public class HomeController {
 	public ResponseEntity<String> deleteplan(@PathVariable(name="objectId", required=true) String objectId) {
 		LOG.info("Deleting object with ID {}.", objectId);
 
-		if (jedisBean.delete(objectId, eTagMap))
+		if (jedisBean.delete(objectId))
 			return new ResponseEntity<String>(objectId + " is deleted successfully.", HttpStatus.OK);
 		else
 			return new ResponseEntity<String>("Deletion is unsuccessfull.", HttpStatus.BAD_REQUEST);
@@ -132,7 +124,7 @@ public class HomeController {
 		if (!validator.validate(jsonObject))
 			return new ResponseEntity<String>("Invalid JSON input against schema.", HttpStatus.BAD_REQUEST);
 		
-		if (!jedisBean.update(jsonObject, objectId, eTagMap))
+		if (!jedisBean.update(jsonObject, objectId))
 			return new ResponseEntity<String>("Failed to update JSON instance in Redis", HttpStatus.BAD_REQUEST);
 		
 		return new ResponseEntity<String>("JSON instance updated in Redis", HttpStatus.OK);
