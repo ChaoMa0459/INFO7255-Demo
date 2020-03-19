@@ -77,15 +77,15 @@ public class HomeController {
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			String jsonString = jedisBean.getFromDB(objectId);
-//			System.out.println("jsonString: " + jsonString);
+			System.out.println("jsonString: " + jsonString);
 
-			if (jsonString != null) {
+			if (jsonString == null || jsonString.equals("{}")) {
+				res = "{\"status\": \"Failure\",\"message\": \"Read unsuccessfull\"}";
+				return new ResponseEntity<String>(res, headers, HttpStatus.NOT_FOUND);
+			} else {
 				res = "{\"status\": \"Success\",\"result\": " + jsonString + "}";
 //				System.out.println("res: " + res);
 				return new ResponseEntity<String>(res, headers, HttpStatus.OK);
-			} else {
-				res = "{\"status\": \"Failure\",\"message\": \"Read unsuccessfull\"}";
-				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -115,22 +115,22 @@ public class HomeController {
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			if (validator.validate(jsonObject)) {
-				String objectId = jedisBean.add(jsonObject);
-				if (objectId == null) {
+				String uuid = jedisBean.add(jsonObject);
+				if (uuid == null) {
 					res = "{\"status\": \"Failure\",\"message\": \"objectId already exists.\"}";
 					return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);				
 				} else {
 					
 					// TODO
 					// Don't do it like this. I can't find etag in other request methods
-					String url = "http://localhost:8080/getplan/" + objectId;
+					String url = "http://localhost:8080/getplan/" + jsonObject.getString("objectId");
 			        RestTemplate restTemplate = new RestTemplate();  
 			        HttpEntity<String> entity = new HttpEntity<String>("parameters", requestHeaders);     
 			        ResponseEntity<String> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 			        HttpHeaders newHeaders = result.getHeaders();
 			        System.out.println("newHeaders: " + newHeaders);
 			        
-					res = "{\"status\": \"Success\",\"message\": \"" + objectId + " is inserted successfully.\"}";
+					res = "{\"status\": \"Success\",\"message\": \"" + jsonObject.getString("objectId") + " is inserted successfully.\"}";
 					return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
 				}
 			} else {
@@ -210,17 +210,17 @@ public class HomeController {
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 			
-//			// TODO
-//			// Don't do it like this. I can't find etag in other request methods
-//	        String url = "http://localhost:8080/getplan/" + objectId;
-//	        RestTemplate restTemplate = new RestTemplate();  
-//	        HttpEntity<String> entity = new HttpEntity<String>("parameters", requestHeaders);     
-//	        ResponseEntity<String> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-//	        HttpHeaders newHeaders = result.getHeaders();
-//	        System.out.println("newHeaders: " + newHeaders);
+			// TODO
+			// Don't do it like this. I can't find etag in other request methods
+	        String url = "http://localhost:8080/getplan/" + jsonObject.getString("objectId");
+	        RestTemplate restTemplate = new RestTemplate();  
+	        HttpEntity<String> entity = new HttpEntity<String>("parameters", requestHeaders);     
+	        ResponseEntity<String> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+	        HttpHeaders newHeaders = result.getHeaders();
+	        System.out.println("newHeaders: " + newHeaders);
 	        
 			res = "{\"status\": \"Success\",\"message\": \"JSON instance updated in Redis\"}";
-			return new ResponseEntity<String>(res, headers, HttpStatus.OK);
+			return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
 			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
@@ -229,58 +229,54 @@ public class HomeController {
 	}
 
 	
-//	// to update Json instance with key id in Redis
-//	@PatchMapping("/changeplan/{objectId}")
-//	public ResponseEntity<String> changeplan(@PathVariable(name="objectId", required=true) String objectId, @RequestBody(required=true) String body, @RequestHeader HttpHeaders requestHeaders) {
-//		
-//		//if id does not exist
-//		if (!jedisBean.doesKeyExist(objectId))
-//			return addplan(body, requestHeaders);
-//		
-//		// else
-//		Schema schema = validator.getSchema();
-//		HttpHeaders headers = new HttpHeaders();
-//		headers.setContentType(MediaType.APPLICATION_JSON);
-//		
-//		String res = null;
-//		try {
-//			if (!ifAuthorized(requestHeaders)) {
-//				res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
-//				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
-//			}
-//			if (schema == null) {
-//				res = "{\"status\": \"Failure\",\"message\": \"schema file not found exception\"}";
-//				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
-//			}
-//			
-//			JSONObject jsonObject = validator.getJsonObjectFromString(body);
-//			
+	// must include objectId and objectType
+	@PatchMapping("/changeplan")
+	public ResponseEntity<String> patchplan(@RequestBody(required=true) String body, @RequestHeader HttpHeaders requestHeaders) {
+		
+		// else
+		Schema schema = validator.getSchema();
+		HttpHeaders headers = new HttpHeaders();
+		headers.setContentType(MediaType.APPLICATION_JSON);
+		
+		String res = null;
+		try {
+			if (!ifAuthorized(requestHeaders)) {
+				res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
+			}
+			if (schema == null) {
+				res = "{\"status\": \"Failure\",\"message\": \"schema file not found exception\"}";
+				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
+			}
+			
+			JSONObject jsonObject = validator.getJsonObjectFromString(body);
+			
 //			if (!validator.validate(jsonObject)) {
 //				res = "{\"status\": \"Failure\",\"message\": \"Invalid JSON input against schema.\"}";
 //				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 //			}
-//			if (!jedisBean.update(jsonObject, objectId)) {
-//				res = "{\"status\": \"Failure\",\"message\": \"Failed to update JSON instance in Redis\"}";
-//				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
-//			}
-//			
-//			// TODO
-//			// Don't do it like this. I can't find etag in other request methods
-//	        String url = "http://localhost:8080/getplan/" + objectId;
-//	        RestTemplate restTemplate = new RestTemplate();  
-//	        HttpEntity<String> entity = new HttpEntity<String>("parameters", requestHeaders);     
-//	        ResponseEntity<String> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-//	        HttpHeaders newHeaders = result.getHeaders();
-//	        System.out.println("newHeaders: " + newHeaders);
-//			
-//			res = "{\"status\": \"Success\",\"message\": \"JSON instance updated in Redis\"}";
-//			return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
-//			return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
-//		}	
-//	}
+			if (!jedisBean.update(jsonObject)) {
+				res = "{\"status\": \"Failure\",\"message\": \"Failed to update JSON instance in Redis\"}";
+				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
+			}
+	        
+			// TODO
+			// Don't do it like this. I can't find etag in other request methods
+	        String url = "http://localhost:8080/getplan/" + jsonObject.getString("objectId");
+	        RestTemplate restTemplate = new RestTemplate();  
+	        HttpEntity<String> entity = new HttpEntity<String>("parameters", requestHeaders);     
+	        ResponseEntity<String> result = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+	        HttpHeaders newHeaders = result.getHeaders();
+	        System.out.println("newHeaders: " + newHeaders);
+	        
+			res = "{\"status\": \"Success\",\"message\": \"JSON instance updated in Redis\"}";
+			return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
+		} catch (Exception e) {
+			e.printStackTrace();
+			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+			return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
+		}	
+	}
 	
 	
 	@GetMapping("/token")
@@ -340,7 +336,5 @@ public class HomeController {
 	}
 
 	// TODO e-tag for PUT
-	// TODO PATCH
-
 
 }
