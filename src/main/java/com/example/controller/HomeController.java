@@ -77,8 +77,11 @@ public class HomeController {
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			String jsonString = jedisBean.getFromDB(objectId);
+//			System.out.println("jsonString: " + jsonString);
+
 			if (jsonString != null) {
-				res = "{\"status\": \"Success\",\"result\": \"" + jsonString + "\"}";
+				res = "{\"status\": \"Success\",\"result\": " + jsonString + "}";
+//				System.out.println("res: " + res);
 				return new ResponseEntity<String>(res, headers, HttpStatus.OK);
 			} else {
 				res = "{\"status\": \"Failure\",\"message\": \"Read unsuccessfull\"}";

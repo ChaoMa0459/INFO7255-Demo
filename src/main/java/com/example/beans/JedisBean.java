@@ -161,16 +161,16 @@ public class JedisBean {
 			System.out.println("Reading keys from pattern");
 			Set<String> keys = jedis.keys(uuid + SEP + "*");
 			
-			System.out.println("uuid: " + uuid);
-			for(String key : keys) {
-				System.out.println("key: " + key);
-			}
-			
+//			System.out.println("uuid: " + uuid);
+//			for(String key : keys) {
+//				System.out.println("key: " + key);
+//			}
+		
 			// object members
 			for(String key : keys) {
 				Set<String> jsonKeySet = jedis.smembers(key);
 				
-				System.out.println("jsonKeySet: " + jsonKeySet);
+//				System.out.println("jsonKeySet: " + jsonKeySet);
 				
 				if(jsonKeySet.size() > 1) {					
 					JSONArray jsonArr = new JSONArray();
@@ -192,9 +192,11 @@ public class JedisBean {
 			// simple members
 			Map<String,String> simpleMap = jedis.hgetAll(uuid);
 			for(String simpleKey : simpleMap.keySet()) {
+//				System.out.println("simpleKey: " + simpleKey);
 				jsonObj.put(simpleKey, simpleMap.get(simpleKey));
 			}
-			
+//			System.out.println("jsonObj: " + jsonObj);
+
 			jedis.close();
 			return jsonObj;
 		} catch(RedisException e) {
@@ -224,13 +226,10 @@ public class JedisBean {
 		try {
 			Jedis jedis = pool.getResource();
 			String uuid = jsonObject.getString("objectType") + SEP + jsonObject.getString("objectId");
+			
 			Map<String,String> simpleMap = jedis.hgetAll(uuid);
 			if(simpleMap.isEmpty()) {
 				simpleMap = new HashMap<String,String>();
-			}
-			
-			if(!doesKeyExist(uuid)) {
-				return false;
 			}
 			
 			for(Object key : jsonObject.keySet()) {
