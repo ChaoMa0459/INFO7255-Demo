@@ -1,7 +1,5 @@
 package com.example.controller;
 
-// import java.util.UUID;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpEntity;
@@ -24,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.filter.ShallowEtagHeaderFilter;
 
+import com.example.beans.ElasticSearchConnect;
 import com.example.beans.JedisBean;
 import com.example.beans.MyJsonValidator;
 
@@ -50,6 +49,9 @@ public class HomeController {
 	private MyJsonValidator validator;
 	@Autowired
 	private JedisBean jedisBean;
+	@Autowired
+	private ElasticSearchConnect elasticSearchConnect;
+	
 	private final Logger LOG = LoggerFactory.getLogger(getClass());
 	
 	private ShallowEtagHeaderFilter eTagFilter = new ShallowEtagHeaderFilter();
@@ -73,23 +75,23 @@ public class HomeController {
 		String res = null;
 		try {
 			if (!ifAuthorized(requestHeaders)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			String jsonString = jedisBean.getFromDB(objectId);
 			System.out.println("jsonString: " + jsonString);
 
 			if (jsonString == null || jsonString.equals("{}")) {
-				res = "{\"status\": \"Failure\",\"message\": \"Read unsuccessfull\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Read unSuccessfulfull\"}";
 				return new ResponseEntity<String>(res, headers, HttpStatus.NOT_FOUND);
 			} else {
-				res = "{\"status\": \"Success\",\"result\": " + jsonString + "}";
+				res = "{\"status\": \"Successful\",\"result\": " + jsonString + "}";
 //				System.out.println("res: " + res);
 				return new ResponseEntity<String>(res, headers, HttpStatus.OK);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+			res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 			return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
 		}
 	}
@@ -111,13 +113,13 @@ public class HomeController {
 		String res = null;
 		try {
 			if (!ifAuthorized(requestHeaders)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			if (validator.validate(jsonObject)) {
 				String uuid = jedisBean.add(jsonObject);
 				if (uuid == null) {
-					res = "{\"status\": \"Failure\",\"message\": \"objectId already exists.\"}";
+					res = "{\"status\": \"Failed\",\"message\": \"objectId already exists.\"}";
 					return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);				
 				} else {
 					
@@ -130,16 +132,18 @@ public class HomeController {
 			        HttpHeaders newHeaders = result.getHeaders();
 			        System.out.println("newHeaders: " + newHeaders);
 			        
-					res = "{\"status\": \"Success\",\"message\": \"" + jsonObject.getString("objectId") + " is inserted successfully.\"}";
+					elasticSearchConnect.runTask(uuid, jsonObject);
+
+					res = "{\"status\": \"Successful\",\"message\": \"" + jsonObject.getString("objectId") + " is inserted Successfulfully.\"}";
 					return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
 				}
 			} else {
-				res = "{\"status\": \"Failure\",\"message\": \"Invalid JSON input against schema.\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Invalid JSON input against schema.\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+			res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 			return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
 		}
 			
@@ -157,23 +161,23 @@ public class HomeController {
 		String res = null;
 		try {
 			if (!ifAuthorized(requestHeaders)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			if (!jedisBean.doesKeyExist(objectId)) {
-				res = "{\"status\": \"Failure\",\"message\": \"ObjectId does not exist.\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"ObjectId does not exist.\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
-			if (jedisBean.delete(objectId)) {
-				res = "{\"status\": \"Success\",\"message\": \"" + objectId + " is deleted successfully.\"}";
+			if (jedisBean.delete(objectId) && elasticSearchConnect.deleteTask(objectId)) {
+				res = "{\"status\": \"Successful\",\"message\": \"" + objectId + " is deleted Successfulfully.\"}";
 				return new ResponseEntity<String>(res, HttpStatus.OK);
 			} else {
-				res = "{\"status\": \"Failure\",\"message\": \"Deletion is unsuccessfull.\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Deletion is unSuccessfulfull.\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+			res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 			return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
 		}
 	}
@@ -191,22 +195,22 @@ public class HomeController {
 		String res = null;
 		try {
 			if (!ifAuthorized(requestHeaders)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			if (schema == null) {
-				res = "{\"status\": \"Failure\",\"message\": \"schema file not found exception\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"schema file not found exception\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 			
 			JSONObject jsonObject = validator.getJsonObjectFromString(body);
 			
 			if (!validator.validate(jsonObject)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Invalid JSON input against schema.\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Invalid JSON input against schema.\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 			if (!jedisBean.update(jsonObject)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Failed to update JSON instance in Redis\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Failed to update JSON instance in Redis\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 			
@@ -219,11 +223,13 @@ public class HomeController {
 	        HttpHeaders newHeaders = result.getHeaders();
 	        System.out.println("newHeaders: " + newHeaders);
 	        
-			res = "{\"status\": \"Success\",\"message\": \"JSON instance updated in Redis\"}";
+			elasticSearchConnect.runTask(jsonObject.getString("objectId"), jsonObject);
+
+			res = "{\"status\": \"Successful\",\"message\": \"JSON instance updated in Redis\"}";
 			return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
-			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+			res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 			return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
 		}	
 	}
@@ -241,22 +247,22 @@ public class HomeController {
 		String res = null;
 		try {
 			if (!ifAuthorized(requestHeaders)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
 			}
 			if (schema == null) {
-				res = "{\"status\": \"Failure\",\"message\": \"schema file not found exception\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"schema file not found exception\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 			
 			JSONObject jsonObject = validator.getJsonObjectFromString(body);
 			
 //			if (!validator.validate(jsonObject)) {
-//				res = "{\"status\": \"Failure\",\"message\": \"Invalid JSON input against schema.\"}";
+//				res = "{\"status\": \"Failed\",\"message\": \"Invalid JSON input against schema.\"}";
 //				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 //			}
 			if (!jedisBean.update(jsonObject)) {
-				res = "{\"status\": \"Failure\",\"message\": \"Failed to update JSON instance in Redis\"}";
+				res = "{\"status\": \"Failed\",\"message\": \"Failed to update JSON instance in Redis\"}";
 				return new ResponseEntity<String>(res, HttpStatus.BAD_REQUEST);
 			}
 	        
@@ -269,11 +275,11 @@ public class HomeController {
 	        HttpHeaders newHeaders = result.getHeaders();
 	        System.out.println("newHeaders: " + newHeaders);
 	        
-			res = "{\"status\": \"Success\",\"message\": \"JSON instance updated in Redis\"}";
+			res = "{\"status\": \"Successful\",\"message\": \"JSON instance updated in Redis\"}";
 			return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
 		} catch (Exception e) {
 			e.printStackTrace();
-			res = "{\"status\": \"Failure\",\"message\": \"Unauthorized\"}";
+			res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
 			return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
 		}	
 	}
@@ -311,10 +317,36 @@ public class HomeController {
 		// -jPDm5Iq0SZnjKjCNS5Q15fokXZc8u0A
 		String token = signedJWT.serialize();
 		
-		String res = "{\"status\": \"Success\",\"token\": \"" + token + "\"}";
+		String res = "{\"status\": \"Successful\",\"token\": \"" + token + "\"}";
 		return new ResponseEntity<String>(res, HttpStatus.OK);
 	
 	}
+	
+	// search plan in elastic search
+		@PostMapping("/searchplan")
+		public ResponseEntity<String> searchplan(@RequestBody(required=true) String body, @RequestHeader HttpHeaders requestHeaders) {
+			LOG.info("Searching object.");
+			
+			JSONObject jsonObject = validator.getJsonObjectFromString(body);
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+			
+			String res = null;
+			try {
+				if (!ifAuthorized(requestHeaders)) {
+					res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
+					return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);
+				}
+				String searchResult = elasticSearchConnect.searchTask(jsonObject);
+				res = "{\"status\": \"Successful\",\"result\": " + searchResult + "}";
+				return new ResponseEntity<String>(res, HttpStatus.OK);
+			} catch (Exception e) {
+				e.printStackTrace();
+				res = "{\"status\": \"Failed\",\"message\": \"Unauthorized\"}";
+				return new ResponseEntity<String>(res, headers, HttpStatus.BAD_REQUEST);		
+			}
+				
+		}
 	
 	private boolean ifAuthorized(HttpHeaders requestHeaders) throws ParseException, JOSEException {
 		String token = requestHeaders.getFirst("Authorization").substring(7);
