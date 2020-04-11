@@ -15,8 +15,6 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONObject;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 public class ElasticSearchConnect {
 	//private static final String indexerURI = "http://localhost:9200/planindex";
@@ -24,7 +22,7 @@ public class ElasticSearchConnect {
 	//index the data
 	public void runTask(String id, JSONObject jsonObject) {
 		try {
-			
+			System.out.println("Adding to elasticsearch " + id);
 			String objectType = jsonObject.getString("objectType");
 			String indexer = "/plan"+"/"+"_doc"+"/"+ id;
 			URL url = new URL("http", "localhost", 9200, indexer);
@@ -49,10 +47,7 @@ public class ElasticSearchConnect {
 	public boolean deleteTask(String objectId) {
 		
 		try {
-			
-//			JSONObject jsonObject = new JSONObject(body);
-//			String objectId = jsonObject.getString("objectId");
-			//String indexer = "/planindexpc"+"/"+"plan"+"/"+ objectId;
+			System.out.println("Deleting from elasticsearch " + objectId);
 			String indexer = "/plan"+"/"+"_doc"+"/"+ objectId;
 			URL url = new URL("http", "localhost", 9200, indexer);
 			CloseableHttpClient httpClient = HttpClients.createDefault();

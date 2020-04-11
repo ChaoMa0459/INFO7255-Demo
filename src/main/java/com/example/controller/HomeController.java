@@ -132,7 +132,7 @@ public class HomeController {
 			        HttpHeaders newHeaders = result.getHeaders();
 			        System.out.println("newHeaders: " + newHeaders);
 			        
-					elasticSearchConnect.runTask(uuid, jsonObject);
+					elasticSearchConnect.runTask(jsonObject.getString("objectId"), jsonObject);
 
 					res = "{\"status\": \"Successful\",\"message\": \"" + jsonObject.getString("objectId") + " is inserted Successfulfully.\"}";
 					return new ResponseEntity<String>(res, newHeaders, HttpStatus.OK);
